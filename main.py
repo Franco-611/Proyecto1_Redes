@@ -1,13 +1,12 @@
 from cliente import XMPPClient
-from getpass import getpass
 
 def registrar_cuenta(jid, password):
     xmpp = XMPPClient(jid, password)
-    xmpp.use_tls = True
+    xmpp.use_tls = False
     xmpp.connect(address=('alumchat.xyz', 5222))
 
     if xmpp.connect():
-        while not xmpp.state.ensure('session_started'):
+        while not xmpp.is_session_started():
             pass
 
         try:
