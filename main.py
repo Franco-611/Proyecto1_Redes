@@ -1,54 +1,45 @@
-from cliente import XMPPClient
+from cliente import MyCliente
+import xmpp
 
 def registrar_cuenta(jid, password):
-    xmpp = XMPPClient(jid, password)
-    xmpp.use_tls = False
-    xmpp.connect(address=('alumchat.xyz', 5222))
+    
+	jid = xmpp.JID(jid)
+	account = xmpp.Client(jid.getDomain(), debug=[])
+	account.connect()
+	return bool(
+	    xmpp.features.register(account, jid.getDomain(), {
+	        'username': jid.getNode(),
+	        'password': password
+	    }))
 
-    if xmpp.connect():
-        while not xmpp.is_session_started():
-            pass
-
-        try:
-            xmpp.register_plugin("xep_0077")
-            xmpp.register_plugin("xep_0030")
-            xmpp['xep_0077'].register(jid, password)
-            print("Cuenta registrada exitosamente.")
-        except Exception as e:
-            print(f"Error al registrar la cuenta: {e}")
-
-        xmpp.disconnect()
-    else:
-        print("Error en la conexión.")
 
 def iniciar_sesion(jid, password):
-    xmpp = XMPPClient(jid, password)
-    xmpp.use_tls = False 
-    xmpp.connect(address=('alumchat.xyz', 5222)) 
+    xmpp = MyCliente(jid, password)
 
-    if xmpp.connect():
+    xmpp.connect(disable_starttls=True)
+    xmpp.process(forever=False)
 
-        while not xmpp.state.ensure('session_started'):
-            pass
+    #     while not xmpp.state.ensure('session_started'):
+    #         pass
 
-        print("Sesión iniciada correctamente.")
+    #     print("Sesión iniciada correctamente.")
 
-        interactuar_con_cliente(xmpp)
+    #     interactuar_con_cliente(xmpp)
 
     
 
-        while True:
-            try:
-                command = input("Ingrese el comando (o 'exit' para salir): ")
-                if command.lower() == 'exit':
-                    break
-                else:
-                    eval(command)
-            except Exception as e:
-                print(f"Error: {e}")
-        xmpp.disconnect()
-    else:
-        print("Error en la conexión. No se pudo iniciar sesión.")
+    #     while True:
+    #         try:
+    #             command = input("Ingrese el comando (o 'exit' para salir): ")
+    #             if command.lower() == 'exit':
+    #                 break
+    #             else:
+    #                 eval(command)
+    #         except Exception as e:
+    #             print(f"Error: {e}")
+    #     xmpp.disconnect()
+    # else:
+    #     print("Error en la conexión. No se pudo iniciar sesión.")
 
 def interactuar_con_cliente(xmpp):
 
@@ -93,7 +84,11 @@ if __name__ == "__main__":
 
             jid = f"{jid}@alumchat.xyz"
 
-            registrar_cuenta(jid, password)
+            if registrar_cuenta(jid, password) :
+                print("¡Cuenta creada exitosamente!")
+            else:
+                print("Error al crear la cuenta. Por favor, intente nuevamente.")
+                break
             
             iniciar_sesion_choice = input("¿Deseas iniciar sesión con la cuenta recién creada? (s/n): ")
             if iniciar_sesion_choice.lower() == "s":

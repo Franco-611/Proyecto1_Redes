@@ -1,8 +1,16 @@
 import slixmpp
 
-class XMPPClient(slixmpp.ClientXMPP):
+class MyCliente(slixmpp.ClientXMPP):
     def __init__(self, jid, password):
-        slixmpp.ClientXMPP.__init__(self, jid, password)
+        super().__init__(jid, password)
+
+        self.register_plugin('xep_0030') # Service Discovery
+        self.register_plugin('xep_0199') # Ping
+        self.register_plugin('xep_0045') # MUC
+        self.register_plugin('xep_0085') # Notifications
+        self.register_plugin('xep_0004') # Data Forms
+        self.register_plugin('xep_0060') # PubSub
+
         self.add_event_handler("session_start", self.start)
 
     def start(self, event):
