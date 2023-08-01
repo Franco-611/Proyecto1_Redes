@@ -8,6 +8,8 @@ class MyCliente(slixmpp.ClientXMPP):
         self.conectado = False
         self.usu = jid
 
+        self.message_queue = asyncio.Queue()
+
 
         self.add_event_handler("session_start", self.start)
         self.add_event_handler('subscription_request', self.handle_subscription_request)
@@ -41,7 +43,14 @@ class MyCliente(slixmpp.ClientXMPP):
                     show = presence['show']
                 if presence['status']:
                     status = presence['status']
+
             if user != self.usu:
+                if show == 'dnd':
+                    show = 'Ocupado'
+                elif show == 'xa':
+                    show = 'No disponible'
+                elif show == 'away':
+                    show = 'Ausente'
                 contact_list.append((user, show, status))
 
         print("\nTus contactos son los siguentes: \n")
@@ -99,14 +108,23 @@ class MyCliente(slixmpp.ClientXMPP):
 
     async def notify_received(self, msg):
         if msg['type'] in ('chat', 'normal'):
-            print(f"Mesaje recibido de {msg['from']}: {msg['body']}")
+            message = f"Mensaje recibido de {msg['from']}: {msg['body']}"
+            await self.message_queue.put(message)
         
     async def handle_subscription_request(self, msg):
         print(f"Solicitud de suscripción recibida de {msg['from']}")
         self.send_presence(pto=msg['from'], ptype='subscribed')  
         print(f"Suscripción aprobada para {msg['from']}")
 
+    async def mostrar_mensajes_recibidos(self):
+        while self.conectado:
+            message = await self.message_queue.get()
+            print(message)
+
     async def interactuar_con_cliente(self):
+        
+        #asyncio.create_task(self.mostrar_mensajes_recibidos())
+
         while self.conectado:
             try:
 
@@ -146,10 +164,12 @@ class MyCliente(slixmpp.ClientXMPP):
                     await self.sendmessage(jid )
                 elif opcion == '9':
                     self.conectado = False
-                    self.disconnect()
+                    await self.disconnect()
+                    exit()
+                    
                 elif opcion == '10':
                     self.conectado = False
-                    self.disconnect()
+                    await self.disconnect()
                 else:
                     print("Opción inválida. Por favor, ingrese un número válido.")
             except Exception as e:

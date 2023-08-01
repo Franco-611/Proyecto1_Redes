@@ -18,9 +18,15 @@ def iniciar_sesion(jid, password):
     xmpp = MyCliente(jid, password)
 
     xmpp.connect(disable_starttls=True)
+    # loop = asyncio.get_event_loop()
+    # asyncio.run(xmpp.interactuar_con_cliente())
     xmpp.process(forever=False)
 
 
+def cerrar_bucle_eventos():
+    loop = asyncio.get_event_loop()
+    loop.stop()
+    loop.close()
 
 if __name__ == "__main__":
     print("Bienvenido al cliente de mensajería XMPP")
@@ -57,6 +63,7 @@ if __name__ == "__main__":
             break
 
         elif choice == "3":
+            cerrar_bucle_eventos()
             print("¡Hasta luego!")
             break
 
