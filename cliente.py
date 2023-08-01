@@ -10,6 +10,8 @@ class MyCliente(slixmpp.ClientXMPP):
 
 
         self.add_event_handler("session_start", self.start)
+        self.add_event_handler('subscription_request', self.handle_subscription_request)
+        self.add_event_handler('message', self.notify_received)
 
     def start(self, event):
         self.send_presence()
@@ -81,18 +83,28 @@ class MyCliente(slixmpp.ClientXMPP):
                 print("El usuario no se encuentra en tus contactos.")
                 return
 
-    async def send_message(self, to_jid):
-        print(" - Estas en el chat de -> {to_jid} \n")
+    async def sendmessage(self, to_jid):
+        print(" - Estas en el chat de ->")
+        print(to_jid)
         print("Si deseas salir de este chat envia -> 'salir' \n")
 
         permanecer = True
 
         while  permanecer:
-            message = await ainput('')
+            message = await ainput('-> ')
             if message == 'salir':
                 permanecer = False
             else:
                 self.send_message(mto=to_jid, mbody=message, mtype='chat')
+
+    async def notify_received(self, msg):
+        if msg['type'] in ('chat', 'normal'):
+            print(f"Mesaje recibido de {msg['from']}: {msg['body']}")
+        
+    async def handle_subscription_request(self, msg):
+        print(f"Solicitud de suscripción recibida de {msg['from']}")
+        self.send_presence(pto=msg['from'], ptype='subscribed')  
+        print(f"Suscripción aprobada para {msg['from']}")
 
     async def interactuar_con_cliente(self):
         while self.conectado:
@@ -129,8 +141,9 @@ class MyCliente(slixmpp.ClientXMPP):
                     await self.contact_details(jid)
                 elif opcion == '4':
                     jid = input("Ingrese el JID del usuario al que desea enviar el mensaje: ")
-                    print("Opcion elegida 4:")
-                    await self.send_message(jid )
+                    jid = f"{jid}@alumchat.xyz"
+                    print("Opcion elegida 4: \n")
+                    await self.sendmessage(jid )
                 elif opcion == '9':
                     self.conectado = False
                     self.disconnect()
@@ -142,16 +155,3 @@ class MyCliente(slixmpp.ClientXMPP):
             except Exception as e:
                 print(f"Error: {e}")
 
-
-    def message_received(self, msg):
-        if msg['type'] in ('chat', 'normal'):
-            print(f"Mensaje recibido de {msg['from']}: {msg['body']}")
-
-    async def notify_received(self, msg):
-        if msg['type'] in ('chat', 'normal'):
-            print(f"Notificación recibida de {msg['from']}: {msg['body']}")
-
-    async def handle_subscription_request(self, msg):
-        print(f"Solicitud de suscripción recibida de {msg['from']}")
-        self.send_presence(pto=msg['from'], ptype='subscribed')  
-        print(f"Suscripción aprobada para {msg['from']}")
