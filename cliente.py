@@ -25,7 +25,7 @@ class MyCliente(slixmpp.ClientXMPP):
     async def show_contacts(self):
         roster = self.client_roster
         contacts = roster.keys()
-        contact_list = []
+        contactos = []
 
         if not contacts:
             print("No tienes contactos.")
@@ -51,10 +51,10 @@ class MyCliente(slixmpp.ClientXMPP):
                     show = 'No disponible'
                 elif show == 'away':
                     show = 'Ausente'
-                contact_list.append((user, show, status))
+                contactos.append((user, show, status))
 
         print("\nTus contactos son los siguentes: \n")
-        for c in contact_list:
+        for c in contactos:
             print(f"Contacto: {c[0]}")
             print(f"Estado: {c[1]}")
             print(f"Mensaje de estado: {c[2]}")
