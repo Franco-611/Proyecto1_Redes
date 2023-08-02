@@ -131,6 +131,13 @@ class MyCliente(slixmpp.ClientXMPP):
             message = await self.message_queue.get()
             print(message)
 
+    async def change_message(self, msg):
+        estado  = ''
+        self.send_presence(pshow=estado, pstatus=msg) 
+        await self.get_roster()
+        print("Mensaje de presencia cambiado correctamente.")
+
+
     async def interactuar_con_cliente(self):
         
         #asyncio.create_task(self.mostrar_mensajes_recibidos())
@@ -171,7 +178,11 @@ class MyCliente(slixmpp.ClientXMPP):
                     jid = input("Ingrese el JID del usuario al que desea enviar el mensaje: ")
                     jid = f"{jid}@alumchat.xyz"
                     print("Opcion elegida 4: \n")
-                    await self.sendmessage(jid )
+                    await self.sendmessage(jid)
+                elif opcion == '6':
+                    mensaje = input("Ingrese el nuevo mensaje a definir: ")
+                    print("Opcion elegida 6: \n")
+                    await self.change_message(mensaje)
                 elif opcion == '9':
                     self.conectado = False
                     await self.disconnect()
