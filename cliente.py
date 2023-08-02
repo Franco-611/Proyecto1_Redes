@@ -73,14 +73,23 @@ class MyCliente(slixmpp.ClientXMPP):
 
             if jid in contacts:
                 connection = roster.presence(jid)
-                show = 'Disponible'
-                status = 'El usuario no tiene un estado...'
+                show = 'Desconectado'
+                status = ''
 
                 for answer, presence in connection.items():
-                    if presence['show']:
+                    if presence:
                         show = presence['show']
                     if presence['status']:
                         status = presence['status']
+
+                    if show == 'dnd':
+                        show = 'Ocupado'
+                    if show == 'xa':
+                        show = 'No disponible'
+                    if show == 'away':
+                        show = 'Ausente'
+                    if show == '':
+                        show = 'Disponible'
 
 
                 print("\nDetalles del contacto:\n")
