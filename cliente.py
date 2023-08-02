@@ -30,27 +30,28 @@ class MyCliente(slixmpp.ClientXMPP):
         if not contacts:
             print("No tienes contactos.")
             return
-
+        
         for jid in contacts:
             user = jid
 
             connection = roster.presence(jid)
-            show = 'Disponible'
+            show = 'Desconectado'
             status = ''
-
-            for answer, presence in connection.items():
-                if presence['show']:
-                    show = presence['show']
-                if presence['status']:
-                    status = presence['status']
-
             if user != self.usu:
-                if show == 'dnd':
-                    show = 'Ocupado'
-                elif show == 'xa':
-                    show = 'No disponible'
-                elif show == 'away':
-                    show = 'Ausente'
+                for answer, presence in connection.items():
+                    if presence:
+                        show = presence['show']
+                    if presence['status']:
+                        status = presence['status']
+
+                    if show == 'dnd':
+                        show = 'Ocupado'
+                    if show == 'xa':
+                        show = 'No disponible'
+                    if show == 'away':
+                        show = 'Ausente'
+                    if show == '':
+                        show = 'Disponible'
                 contactos.append((user, show, status))
 
         print("\nTus contactos son los siguentes: \n")
