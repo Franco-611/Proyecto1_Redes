@@ -1,6 +1,8 @@
 import slixmpp
 from aioconsole import ainput
 import asyncio
+import os
+from pathlib import Path
 
 class MyCliente(slixmpp.ClientXMPP):
     def __init__(self, jid, password):
@@ -114,7 +116,10 @@ class MyCliente(slixmpp.ClientXMPP):
             if message == 'salir':
                 permanecer = False
             else:
-                self.send_message(mto=to_jid, mbody=message, mtype='chat')
+                try:
+                    self.send_message(mto=to_jid, mbody=message, mtype='chat')
+                except:
+                    print("Error al enviar el mensaje.")
 
     async def notify_received(self, msg):
         if msg['type'] in ('chat', 'normal'):
@@ -137,6 +142,76 @@ class MyCliente(slixmpp.ClientXMPP):
         await self.get_roster()
         print("Mensaje de presencia cambiado correctamente.")
 
+    async def send_file(self, to_jid, file_path):
+        try:
+            with open(file_path, 'rb') as file:
+                filename = os.path.basename(file_path)
+                html_body = f"<a href='file://{filename}'>{filename}</a>"
+                mhtml = {'body': html_body}
+                self.send_message(mto=to_jid, mbody=filename, mtype='chat', mhtml=mhtml)
+                await self.send_file_transfer(to_jid, file)
+            print("Archivo enviado con éxito.")
+        except Exception as e:
+            print(f"Error al enviar el archivo: {e}")
+
+    async def send_file_transfer(self, to_jid, file_path):
+        try:
+            with open(file_path, 'rb') as file:
+                file_transfer = self['xep_0363'].upload(to_jid, file)
+                await file_transfer.send()
+            print("Archivo enviado con éxito.")
+        except Exception as e:
+            print(f"Error al enviar el archivo: {e}")
+
+    async def crear_grupo(self, nombre_grupo):
+        try:
+            # Crear una sala de chat (grupo) utilizando MUC
+            respuesta = await self.plugin['xep_0045'].join_muc(
+                room=nombre_grupo,
+                nick=self.usu,
+                wait=True
+            )
+
+            if respuesta['muc']['#status_code'] == 201:
+                print(f"Se ha creado el grupo '{nombre_grupo}' correctamente.")
+                print(f"Puedes invitar a otros usuarios con el comando: /invite usuario@servidor")
+            else:
+                print(f"No se pudo crear el grupo '{nombre_grupo}'.")
+
+        except Exception as e:
+            print(f"Error al crear el grupo '{nombre_grupo}': {str(e)}")
+
+    async def invitar_usuario(self, nombre_grupo, jid_usuario):
+        try:
+            # Invitar a un usuario a unirse al grupo utilizando MUC
+            respuesta = await self.plugin['xep_0045'].invite(
+                room=nombre_grupo,
+                jid=jid_usuario,
+                reason='¡Únete a nuestro grupo de chat!'
+            )
+
+            if respuesta['muc']['#status_code'] == 170:
+                print(f"Se ha enviado una invitación a '{jid_usuario}' para unirse al grupo '{nombre_grupo}'.")
+            else:
+                print(f"No se pudo enviar la invitación a '{jid_usuario}'.")
+        except Exception as e:
+            print(f"Error al enviar la invitación a '{jid_usuario}': {str(e)}")
+
+    def delete_count(self):
+        try:
+            delete_stanza = f"""
+                <iq type="set" id="delete-account">
+                <query xmlns="jabber:iq:register">
+                    <remove jid="{self.usu}"/>
+                </query>
+                </iq>
+            """
+            response = self.send_raw(delete_stanza)
+
+            print("Solicitud de eliminación de cuenta enviada correctamente.")
+            self.disconnect()
+        except Exception as e:
+            print(f"Error al enviar la solicitud de eliminación de cuenta: {e}")
 
     async def interactuar_con_cliente(self):
         
@@ -153,10 +228,9 @@ class MyCliente(slixmpp.ClientXMPP):
                 print("4) Comunicación 1 a 1 con cualquier usuario/contacto (Chat con un usuario).")
                 print("5) Participar en conversaciones grupales.")
                 print("6) Definir mensaje de presencia.")
-                print("7) Enviar/recibir notificaciones.")
-                print("8) Enviar/recibir archivos.")
-                print("9) Desconectarse.")
-                print("10) Eliminar cuenta.")
+                print("7) Enviar un archivo.")
+                print("8) Desconectarse.")
+                print("9) Eliminar cuenta.")
                 print("*****************************************************\n")
 
                 opcion = await ainput("Ingrese el número de la opción deseada: \n")
@@ -168,7 +242,7 @@ class MyCliente(slixmpp.ClientXMPP):
                     jid = input("Ingrese el JID del usuario que desea agregar: ")
                     jid = f"{jid}@alumchat.xyz"
                     print("Opcion elegida 2:")
-                    self.add_contact(jid)
+                    await self.add_contact(jid)
                 elif opcion == '3':
                     jid = input("Ingrese el JID del usuario del que desea ver detalles: ")
                     jid = f"{jid}@alumchat.xyz"
@@ -183,14 +257,27 @@ class MyCliente(slixmpp.ClientXMPP):
                     mensaje = input("Ingrese el nuevo mensaje a definir: ")
                     print("Opcion elegida 6: \n")
                     await self.change_message(mensaje)
-                elif opcion == '9':
+                elif opcion == '7':
+                    jid = input("Ingrese el JID del usuario al que desea enviar el archivo: ")
+                    jid = f"{jid}@alumchat.xyz"
+                    file_path = "prueba.txt"  # Ruta predeterminada "prueba.txt"
+                    custom_path = input(f"Ingrese la ruta del archivo (deje en blanco para usar la ruta predeterminada '{file_path}'): ")
+                    if custom_path.strip():
+                        file_path = custom_path.strip()
+                    print("Opcion elegida 7: \n")
+                    await self.send_file(jid, file_path)
+                elif opcion == '8':
                     self.conectado = False
                     await self.disconnect()
                     exit()
-                    
-                elif opcion == '10':
-                    self.conectado = False
-                    await self.disconnect()
+                elif opcion == '9':
+                    print("Opcion elegida 9: \n")
+                    confirmation = input("Esta seguro de eliminar la cuenta (s/n): ")
+                    if confirmation == 's':
+                        self.conectado = False
+                        self.delete_count()
+                    else:
+                        pass
                 else:
                     print("Opción inválida. Por favor, ingrese un número válido.")
             except Exception as e:
