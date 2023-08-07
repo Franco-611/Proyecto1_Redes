@@ -2,39 +2,51 @@ import slixmpp
 from aioconsole import ainput
 import asyncio
 import os
+import time
 from pathlib import Path
+from aioxmpp import JID
+from slixmpp.plugins.xep_0066 import stanza as xep_0066
 
 class MyCliente(slixmpp.ClientXMPP):
     def __init__(self, jid, password):
         super().__init__(jid, password)
         self.conectado = False
         self.usu = jid
-
+        self.primera = True
+        self.cont = []
+        
         self.message_queue = asyncio.Queue()
-
 
         self.add_event_handler("session_start", self.start)
         self.add_event_handler('subscription_request', self.handle_subscription_request)
         self.add_event_handler('message', self.notify_received)
 
-    def start(self, event):
+        self.register_plugin('xep_0045')
+
+    async def start(self, event):
         self.send_presence()
         self.get_roster()
         self.conectado = True
         print("Sesión iniciada correctamente. \n")
+        await self.get_roster()
+        await self.show_contacts()
         asyncio.create_task(self.interactuar_con_cliente())
+        #asyncio.create_task(self.subscription_request())
 
     async def show_contacts(self):
         roster = self.client_roster
         contacts = roster.keys()
         contactos = []
 
-        if not contacts:
+        if not contacts and not self.primera:
             print("No tienes contactos.")
             return
         
         for jid in contacts:
             user = jid
+
+            if '@conference' in user:
+                continue
 
             connection = roster.presence(jid)
             show = 'Desconectado'
@@ -54,15 +66,18 @@ class MyCliente(slixmpp.ClientXMPP):
                         show = 'Ausente'
                     if show == '':
                         show = 'Disponible'
+                if self.primera:
+                    self.cont.append(user)
                 contactos.append((user, show, status))
-
-        print("\nTus contactos son los siguentes: \n")
-        for c in contactos:
-            print(f"Contacto: {c[0]}")
-            print(f"Estado: {c[1]}")
-            print(f"Mensaje de estado: {c[2]}")
+        if not self.primera:
+            print("\nTus contactos son los siguentes: \n")
+            for c in contactos:
+                print(f"Contacto: {c[0]}")
+                print(f"Estado: {c[1]}")
+                print(f"Mensaje de estado: {c[2]}")
+                print("")
             print("")
-        print("")
+        self.primera = False
 
     async def add_contact(self, jid):
         self.send_presence_subscription(pto=jid)
@@ -120,6 +135,23 @@ class MyCliente(slixmpp.ClientXMPP):
                     self.send_message(mto=to_jid, mbody=message, mtype='chat')
                 except:
                     print("Error al enviar el mensaje.")
+    
+    async def sendmessage_group(self, to_jid):
+        print(" - Estas en el chat del grupo ->")
+        print(to_jid)
+        print("Si deseas salir de este chat envia -> 'salir' \n")
+
+        permanecer = True
+
+        while  permanecer:
+            message = await ainput('-> ')
+            if message == 'salir':
+                permanecer = False
+            else:
+                try:
+                    self.send_message(mto=to_jid, mbody=message, mtype='groupchat')
+                except:
+                    print("Error al enviar el mensaje.")
 
     async def notify_received(self, msg):
         if msg['type'] in ('chat', 'normal'):
@@ -142,60 +174,112 @@ class MyCliente(slixmpp.ClientXMPP):
         await self.get_roster()
         print("Mensaje de presencia cambiado correctamente.")
 
+    # async def send_file(self, to_jid, file_path):
+    #     try:
+    #         with open(file_path, 'rb') as file:
+    #             filename = os.path.basename(file_path)
+    #             html_body = f"<a href='file://{filename}'>{filename}</a>"
+    #             mhtml = {'body': html_body}
+    #             self.send_message(mto=to_jid, mbody=filename, mtype='chat', mhtml=mhtml)
+    #             await self.send_file_transfer(to_jid, file)
+    #         print("Archivo enviado con éxito.")
+    #     except Exception as e:
+    #         print(f"Error al enviar el archivo: {e}")
+
+    # async def send_file_transfer(self, to_jid, file_path):
+    #     try:
+    #         with open(file_path, 'rb') as file:
+    #             file_transfer = self['xep_0363'].upload(to_jid, file)
+    #             await file_transfer.send()
+    #         print("Archivo enviado con éxito.")
+    #     except Exception as e:
+    #         print(f"Error al enviar el archivo: {e}")
+
     async def send_file(self, to_jid, file_path):
         try:
-            with open(file_path, 'rb') as file:
-                filename = os.path.basename(file_path)
-                html_body = f"<a href='file://{filename}'>{filename}</a>"
-                mhtml = {'body': html_body}
-                self.send_message(mto=to_jid, mbody=filename, mtype='chat', mhtml=mhtml)
-                await self.send_file_transfer(to_jid, file)
-            print("Archivo enviado con éxito.")
-        except Exception as e:
-            print(f"Error al enviar el archivo: {e}")
+            # Verificar si el archivo existe
+            if not os.path.isfile(file_path):
+                print(f"El archivo '{file_path}' no existe.")
+                return
 
-    async def send_file_transfer(self, to_jid, file_path):
-        try:
-            with open(file_path, 'rb') as file:
-                file_transfer = self['xep_0363'].upload(to_jid, file)
-                await file_transfer.send()
-            print("Archivo enviado con éxito.")
-        except Exception as e:
-            print(f"Error al enviar el archivo: {e}")
+            # Obtener el nombre del archivo
+            file_name = os.path.basename(file_path)
 
-    async def crear_grupo(self, nombre_grupo):
-        try:
-            # Crear una sala de chat (grupo) utilizando MUC
-            respuesta = await self.plugin['xep_0045'].join_muc(
-                room=nombre_grupo,
-                nick=self.usu,
-                wait=True
+            # Crear un JID para el destinatario
+            dest_jid = JID.fromstr(to_jid)
+
+            # Preparar el mensaje con el archivo adjunto
+            message = self.make_message(
+                mto=dest_jid,
+                mtype="chat",
+                msubject=f"Archivo: {file_name}",
+                mbody=f"Te estoy enviando el archivo '{file_name}'",
             )
 
-            if respuesta['muc']['#status_code'] == 201:
-                print(f"Se ha creado el grupo '{nombre_grupo}' correctamente.")
-                print(f"Puedes invitar a otros usuarios con el comando: /invite usuario@servidor")
-            else:
-                print(f"No se pudo crear el grupo '{nombre_grupo}'.")
+            # Crear un elemento OOB y agregar el atributo 'url' utilizando append()
+            oob = xep_0066.OOB()
+            oob["url"] = f"file://{file_path}"
+            oob["desc"] = f"Archivo: {file_name}"
+            oob["expires"] = "3600"
+            message.append(oob)
+
+            # Enviar el mensaje
+            message.send()
+
+            print(f"Archivo '{file_name}' enviado exitosamente a {to_jid}")
+        except Exception as e:
+            print(f"Error al enviar el archivo: {str(e)}")
+
+    async def crear_grupo(self, nombre_grupo):
+        invitar = True
+        try:
+            self.plugin['xep_0045'].join_muc(nombre_grupo, self.boundjid.user)
+
+            await asyncio.sleep(2)
+
+            form = self.plugin['xep_0004'].make_form(ftype='submit', title='Configuracion de sala de chat')
+
+            form['muc#roomconfig_roomname'] = nombre_grupo
+            form['muc#roomconfig_persistentroom'] = '1'
+            form['muc#roomconfig_publicroom'] = '1'
+            form['muc#roomconfig_membersonly'] = '0'
+            form['muc#roomconfig_allowinvites'] = '0'
+            form['muc#roomconfig_enablelogging'] = '1'
+            form['muc#roomconfig_changesubject'] = '1'
+            form['muc#roomconfig_maxusers'] = '100'
+            form['muc#roomconfig_whois'] = 'anyone'
+            form['muc#roomconfig_roomdesc'] = 'Chat de prueba'
+            form['muc#roomconfig_roomowners'] = [self.boundjid.user]
+
+            await self.plugin['xep_0045'].set_room_config(nombre_grupo, config=form)
+
+            print(f"Sala de chat '{nombre_grupo}' creada correctamente.")
+
+            while invitar:
+                usuario_invitado = await ainput("Ingresa el JID del usuario que deseas invitar al grupo: ")
+                usuario_invitado = f"{usuario_invitado}@alumchat.xyz"
+
+                await self.plugin['xep_0045'].invite(
+                    room=nombre_grupo,
+                    jid=usuario_invitado,
+                    reason="¡Únete a nuestro grupo de chat!"
+                )
+                print(f"Se ha enviado una invitación a {usuario_invitado} para unirse al grupo.")
+                invitar = await ainput("¿Deseas invitar a otro usuario al grupo? (s/n): ")
+                if invitar == 'n':
+                    invitar = False
+                
+
 
         except Exception as e:
             print(f"Error al crear el grupo '{nombre_grupo}': {str(e)}")
 
-    async def invitar_usuario(self, nombre_grupo, jid_usuario):
+    async def unirse_grupo(self, nombre_grupo):
         try:
-            # Invitar a un usuario a unirse al grupo utilizando MUC
-            respuesta = await self.plugin['xep_0045'].invite(
-                room=nombre_grupo,
-                jid=jid_usuario,
-                reason='¡Únete a nuestro grupo de chat!'
-            )
-
-            if respuesta['muc']['#status_code'] == 170:
-                print(f"Se ha enviado una invitación a '{jid_usuario}' para unirse al grupo '{nombre_grupo}'.")
-            else:
-                print(f"No se pudo enviar la invitación a '{jid_usuario}'.")
+            self.plugin['xep_0045'].join_muc(nombre_grupo, self.boundjid.user)
+            print(f"Te has unido al grupo '{nombre_grupo}' correctamente.")
         except Exception as e:
-            print(f"Error al enviar la invitación a '{jid_usuario}': {str(e)}")
+            print(f"Error al unirse al grupo '{nombre_grupo}': {str(e)}")
 
     def delete_count(self):
         try:
@@ -213,9 +297,12 @@ class MyCliente(slixmpp.ClientXMPP):
         except Exception as e:
             print(f"Error al enviar la solicitud de eliminación de cuenta: {e}")
 
+    async def subscription_request(self):
+        while self.conectado:
+            print(self.cont)
+            time.sleep(4)
+
     async def interactuar_con_cliente(self):
-        
-        #asyncio.create_task(self.mostrar_mensajes_recibidos())
 
         while self.conectado:
             try:
@@ -253,6 +340,27 @@ class MyCliente(slixmpp.ClientXMPP):
                     jid = f"{jid}@alumchat.xyz"
                     print("Opcion elegida 4: \n")
                     await self.sendmessage(jid)
+                elif opcion == '5':
+                    print("*****************************************************")
+                    print("Menú de opciones:")
+                    print("1) Crear un nuevo grupo.")
+                    print("2) Ingresar a un grupo existente.")
+                    print("3) Enviar mensaje a un grupo.")
+                    print("*****************************************************")
+                    opcion1 = await ainput("Ingrese el número de la opción deseada: \n")
+                    if opcion1 == '1':
+                        nombre_grupo = input("Ingrese el nombre del grupo que deseas crear: ")
+                        nombre_grupo = f"{nombre_grupo}@conference.alumchat.xyz"
+                        await self.crear_grupo(nombre_grupo)
+                    elif opcion1 == '2':
+                        nombre_grupo = input("Ingrese el nombre del grupo al que desea unirse: ")
+                        nombre_grupo = f"{nombre_grupo}@conference.alumchat.xyz"
+                        await self.unirse_grupo(nombre_grupo)
+                    elif opcion1 == '3':
+                        grupo = input("Ingrese el nombre del grupo al que desea enviar el mensaje: ")
+                        grupo = f"{grupo}@conference.alumchat.xyz"
+                        await self.sendmessage_group(grupo)
+
                 elif opcion == '6':
                     mensaje = input("Ingrese el nuevo mensaje a definir: ")
                     print("Opcion elegida 6: \n")
@@ -260,7 +368,7 @@ class MyCliente(slixmpp.ClientXMPP):
                 elif opcion == '7':
                     jid = input("Ingrese el JID del usuario al que desea enviar el archivo: ")
                     jid = f"{jid}@alumchat.xyz"
-                    file_path = "prueba.txt"  # Ruta predeterminada "prueba.txt"
+                    file_path = "prueba.txt"
                     custom_path = input(f"Ingrese la ruta del archivo (deje en blanco para usar la ruta predeterminada '{file_path}'): ")
                     if custom_path.strip():
                         file_path = custom_path.strip()
