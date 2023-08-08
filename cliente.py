@@ -31,7 +31,7 @@ class MyCliente(slixmpp.ClientXMPP):
         await self.get_roster()
         await self.show_contacts()
         asyncio.create_task(self.interactuar_con_cliente())
-        #asyncio.create_task(self.subscription_request())
+        asyncio.create_task(self.subscription_request())
 
     async def show_contacts(self):
         roster = self.client_roster
@@ -298,9 +298,49 @@ class MyCliente(slixmpp.ClientXMPP):
             print(f"Error al enviar la solicitud de eliminación de cuenta: {e}")
 
     async def subscription_request(self):
+        await asyncio.sleep(2)
         while self.conectado:
-            print(self.cont)
-            time.sleep(4)
+            await self.get_roster()
+            roster = self.client_roster
+            contacts = roster.keys()
+            conta = []
+            
+            for jid in contacts:
+                user = jid
+
+                if '@conference' in user:
+                    continue
+
+                connection = roster.presence(jid)
+                show = 'Desconectado'
+                status = ''
+                if user != self.usu:
+                    for answer, presence in connection.items():
+                        if presence:
+                            show = presence['show']
+                        if presence['status']:
+                            status = presence['status']
+
+                        if show == 'dnd':
+                            show = 'Ocupado'
+                        if show == 'xa':
+                            show = 'No disponible'
+                        if show == 'away':
+                            show = 'Ausente'
+                        if show == '':
+                            show = 'Disponible'
+                    conta.append(user)
+
+
+            if conta == self.cont:
+                pass
+            else:
+                print("Solicitud de suscripción recibida del usuario: ")
+                for i in conta:
+                    if i not in self.cont:
+                        print(i)
+                        self.cont.append(i)
+            time.sleep(1)
 
     async def interactuar_con_cliente(self):
 
