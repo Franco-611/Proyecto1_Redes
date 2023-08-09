@@ -14,12 +14,13 @@ class MyCliente(slixmpp.ClientXMPP):
         self.usu = jid
         self.primera = True
         self.cont = []
+        self.estados = []
         
         self.message_queue = asyncio.Queue()
 
         self.add_event_handler("session_start", self.start)
         self.add_event_handler('subscription_request', self.handle_subscription_request)
-        self.add_event_handler('message', self.notify_received)
+        self.add_event_handler('message', self.recibir_mensaje)
 
         self.register_plugin('xep_0045')
 
@@ -32,6 +33,7 @@ class MyCliente(slixmpp.ClientXMPP):
         await self.show_contacts()
         asyncio.create_task(self.interactuar_con_cliente())
         asyncio.create_task(self.subscription_request())
+        #asyncio.create_task(self.conection_request())
 
     async def show_contacts(self):
         roster = self.client_roster
@@ -68,6 +70,7 @@ class MyCliente(slixmpp.ClientXMPP):
                         show = 'Disponible'
                 if self.primera:
                     self.cont.append(user)
+                    self.estados.append((user, show))
                 contactos.append((user, show, status))
         if not self.primera:
             print("\nTus contactos son los siguentes: \n")
@@ -173,6 +176,19 @@ class MyCliente(slixmpp.ClientXMPP):
         self.send_presence(pshow=estado, pstatus=msg) 
         await self.get_roster()
         print("Mensaje de presencia cambiado correctamente.")
+
+    async def recibir_mensaje(self, msg):
+        if msg['type'] in ('chat', 'normal'):
+            message = f"Mensaje recibido de {msg['from']}: {msg['body']}"
+            print(message)
+
+        if msg['type'] in ('groupchat'):
+            grupo = str(msg['from']).split('/')[0]
+            emisor = str(msg['from']).split('/')[1]
+            if emisor in self.usu:
+                return
+            message = f"Mensaje recibido del grupo {grupo} de {emisor}: {msg['body']}"
+            print(message)
 
     # async def send_file(self, to_jid, file_path):
     #     try:
@@ -340,6 +356,53 @@ class MyCliente(slixmpp.ClientXMPP):
                     if i not in self.cont:
                         print(i)
                         self.cont.append(i)
+            time.sleep(1)
+
+    async def conection_request(self):
+        await asyncio.sleep(2)
+        while self.conectado:
+            await self.get_roster()
+            roster = self.client_roster
+            contacts = roster.keys()
+            esta = []
+            
+            for jid in contacts:
+                user = jid
+
+                if '@conference' in user:
+                    continue
+
+                connection = roster.presence(jid)
+                show = 'Desconectado'
+                status = ''
+                if user != self.usu:
+                    for answer, presence in connection.items():
+                        if presence:
+                            show = presence['show']
+                        if presence['status']:
+                            status = presence['status']
+
+                        if show == 'dnd':
+                            show = 'Ocupado'
+                        if show == 'xa':
+                            show = 'No disponible'
+                        if show == 'away':
+                            show = 'Ausente'
+                        if show == '':
+                            show = 'Disponible'
+                    esta.append((user, show))
+
+            print(esta)
+            print(self.estados)
+
+            if esta == self.estados:
+                pass
+            else:
+                for i in esta:
+                    print(i)
+                    if i[1] != self.estados[1]:
+                        print("El usuario: " + str(i[0]) + " cambio su estado a Disponible!!!")
+                        self.estados[1] = i[1]
             time.sleep(1)
 
     async def interactuar_con_cliente(self):
