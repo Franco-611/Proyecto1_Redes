@@ -182,7 +182,7 @@ class MyCliente(slixmpp.ClientXMPP):
             message = f"Mensaje recibido de {msg['from']}: {msg['body']}"
             print(message)
 
-        if msg['type'] in ('groupchat'):
+        if msg['type'] == 'groupchat':
             grupo = str(msg['from']).split('/')[0]
             emisor = str(msg['from']).split('/')[1]
             if emisor in self.usu:
