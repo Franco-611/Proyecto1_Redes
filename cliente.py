@@ -19,8 +19,9 @@ class MyCliente(slixmpp.ClientXMPP):
         self.message_queue = asyncio.Queue()
 
         self.add_event_handler("session_start", self.start)
-        self.add_event_handler('subscription_request', self.handle_subscription_request)
         self.add_event_handler('message', self.recibir_mensaje)
+        self.add_event_handler('groupchat_invite', self.aceptGroup)
+        self.add_event_handler('changed_status', self.presence_handler)
 
         self.register_plugin('xep_0045')
         self.register_plugin('xep_0004')
@@ -34,7 +35,6 @@ class MyCliente(slixmpp.ClientXMPP):
         await self.show_contacts()
         asyncio.create_task(self.interactuar_con_cliente())
         asyncio.create_task(self.subscription_request())
-        #asyncio.create_task(self.conection_request())
 
     async def show_contacts(self):
         roster = self.client_roster
@@ -298,6 +298,19 @@ class MyCliente(slixmpp.ClientXMPP):
         except Exception as e:
             print(f"Error al unirse al grupo '{nombre_grupo}': {str(e)}")
 
+    async def aceptGroup(self, group):
+        try:
+            nombre_grupo = group["from"]
+            
+            print(f"Se ha unido al grupo '{nombre_grupo}'.")
+
+            self.plugin['xep_0045'].join_muc(nombre_grupo, self.boundjid.user)
+
+            self.send_presence(pto=nombre_grupo, ptype="available")
+
+        except:
+            pass
+
     def delete_count(self):
         try:
             delete_stanza = f"""
@@ -359,53 +372,12 @@ class MyCliente(slixmpp.ClientXMPP):
                         self.cont.append(i)
             time.sleep(1)
 
-    async def conection_request(self):
-        await asyncio.sleep(2)
-        while self.conectado:
-            await self.get_roster()
-            roster = self.client_roster
-            contacts = roster.keys()
-            esta = []
-            
-            for jid in contacts:
-                user = jid
-
-                if '@conference' in user:
-                    continue
-
-                connection = roster.presence(jid)
-                show = 'Desconectado'
-                status = ''
-                if user != self.usu:
-                    for answer, presence in connection.items():
-                        if presence:
-                            show = presence['show']
-                        if presence['status']:
-                            status = presence['status']
-
-                        if show == 'dnd':
-                            show = 'Ocupado'
-                        if show == 'xa':
-                            show = 'No disponible'
-                        if show == 'away':
-                            show = 'Ausente'
-                        if show == '':
-                            show = 'Disponible'
-                    esta.append((user, show))
-
-            print(esta)
-            print(self.estados)
-
-            if esta == self.estados:
-                pass
-            else:
-                for i in esta:
-                    print(i)
-                    if i[1] != self.estados[1]:
-                        print("El usuario: " + str(i[0]) + " cambio su estado a Disponible!!!")
-                        self.estados[1] = i[1]
-            time.sleep(1)
-
+    def presence_handler(self, presence):
+        if presence['type'] == 'available':
+            print(f"El contacto {presence['from']} está disponible")
+        elif presence['type'] == 'unavailable':
+            print(f"El contacto {presence['from']} está no disponible")
+        
     async def interactuar_con_cliente(self):
 
         while self.conectado:
