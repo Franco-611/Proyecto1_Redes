@@ -23,6 +23,7 @@ class MyCliente(slixmpp.ClientXMPP):
         self.add_event_handler('message', self.recibir_mensaje)
 
         self.register_plugin('xep_0045')
+        self.register_plugin('xep_0004')
 
     async def start(self, event):
         self.send_presence()
@@ -259,7 +260,7 @@ class MyCliente(slixmpp.ClientXMPP):
             form['muc#roomconfig_persistentroom'] = '1'
             form['muc#roomconfig_publicroom'] = '1'
             form['muc#roomconfig_membersonly'] = '0'
-            form['muc#roomconfig_allowinvites'] = '0'
+            form['muc#roomconfig_allowinvites'] = '1'
             form['muc#roomconfig_enablelogging'] = '1'
             form['muc#roomconfig_changesubject'] = '1'
             form['muc#roomconfig_maxusers'] = '100'
