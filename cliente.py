@@ -191,27 +191,6 @@ class MyCliente(slixmpp.ClientXMPP):
             message = f"Mensaje recibido del grupo {grupo} de {emisor}: {msg['body']}"
             print(message)
 
-    # async def send_file(self, to_jid, file_path):
-    #     try:
-    #         with open(file_path, 'rb') as file:
-    #             filename = os.path.basename(file_path)
-    #             html_body = f"<a href='file://{filename}'>{filename}</a>"
-    #             mhtml = {'body': html_body}
-    #             self.send_message(mto=to_jid, mbody=filename, mtype='chat', mhtml=mhtml)
-    #             await self.send_file_transfer(to_jid, file)
-    #         print("Archivo enviado con éxito.")
-    #     except Exception as e:
-    #         print(f"Error al enviar el archivo: {e}")
-
-    # async def send_file_transfer(self, to_jid, file_path):
-    #     try:
-    #         with open(file_path, 'rb') as file:
-    #             file_transfer = self['xep_0363'].upload(to_jid, file)
-    #             await file_transfer.send()
-    #         print("Archivo enviado con éxito.")
-    #     except Exception as e:
-    #         print(f"Error al enviar el archivo: {e}")
-
     async def send_file(self, to_jid, file_path):
         try:
             # Verificar si el archivo existe
