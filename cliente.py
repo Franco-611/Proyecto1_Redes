@@ -6,6 +6,7 @@ import time
 from pathlib import Path
 from aioxmpp import JID
 from slixmpp.plugins.xep_0066 import stanza as xep_0066
+import base64
 
 class MyCliente(slixmpp.ClientXMPP):
     def __init__(self, jid, password):
@@ -180,7 +181,19 @@ class MyCliente(slixmpp.ClientXMPP):
 
     async def recibir_mensaje(self, msg):
         if msg['type'] in ('chat', 'normal'):
-            message = f"Mensaje recibido de {msg['from']}: {msg['body']}"
+            if "file|" in msg['body']:
+                extension = msg['body'].split('|')[1]
+                archivo = msg['body'].split('|')[2]
+                final = base64.b64decode(archivo.encode())
+                
+                with open(f"recibido.{extension}", 'wb') as file:
+                    file.write(final)
+
+                message = f"Archivo recibido de {msg['from']}"
+
+            else:
+
+                message = f"Mensaje recibido de {msg['from']}: {msg['body']}"
             print(message)
 
         if msg['type'] == 'groupchat':
@@ -190,6 +203,21 @@ class MyCliente(slixmpp.ClientXMPP):
                 return
             message = f"Mensaje recibido del grupo {grupo} de {emisor}: {msg['body']}"
             print(message)
+
+    async def send_file1(self, jid, file_path):
+        try:
+
+            file_extension = file_path.split('.')[-1]
+            with open(file_path, 'rb') as file:
+                file_data = file.read()
+                file_data_base64 = base64.b64encode(file_data).decode('utf-8')
+
+            message = "file|" + file_extension + "|" + file_data_base64 
+
+            self.send_message(mto=jid, mbody=message, mtype='chat')
+            print(f"File '{file_path}' enviado a {jid}")
+        except Exception as e:
+            print(f"Error sending file: {e}")
 
     async def send_file(self, to_jid, file_path):
         try:
@@ -428,7 +456,7 @@ class MyCliente(slixmpp.ClientXMPP):
                     if custom_path.strip():
                         file_path = custom_path.strip()
                     print("Opcion elegida 7: \n")
-                    await self.send_file(jid, file_path)
+                    await self.send_file1(jid, file_path)
                 elif opcion == '8':
                     self.conectado = False
                     await self.disconnect()
