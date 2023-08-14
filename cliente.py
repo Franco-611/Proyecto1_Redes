@@ -380,10 +380,20 @@ class MyCliente(slixmpp.ClientXMPP):
             time.sleep(1)
 
     def presence_handler(self, presence):
+
+        quien = presence['from']
+
+
         if presence['type'] == 'available':
-            print(f"El contacto {presence['from']} está disponible")
+            if '@conference' in quien.full:
+                pass
+            else:
+                print(f"El contacto {presence['from']} está disponible")
         elif presence['type'] == 'unavailable':
-            print(f"El contacto {presence['from']} está no disponible")
+            if '@conference' in quien.full:
+                pass
+            else:
+                print(f"El contacto {presence['from']} está no disponible")
         
     async def interactuar_con_cliente(self):
 
