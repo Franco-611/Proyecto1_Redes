@@ -1,10 +1,7 @@
 import slixmpp
 from aioconsole import ainput
 import asyncio
-import os
 import time
-from pathlib import Path
-from aioxmpp import JID
 from slixmpp.plugins.xep_0066 import stanza as xep_0066
 import base64
 
@@ -157,22 +154,7 @@ class MyCliente(slixmpp.ClientXMPP):
                     self.send_message(mto=to_jid, mbody=message, mtype='groupchat')
                 except:
                     print("Error al enviar el mensaje.")
-
-    async def notify_received(self, msg):
-        if msg['type'] in ('chat', 'normal'):
-            message = f"Mensaje recibido de {msg['from']}: {msg['body']}"
-            await self.message_queue.put(message)
         
-    async def handle_subscription_request(self, msg):
-        print(f"Solicitud de suscripción recibida de {msg['from']}")
-        self.send_presence(pto=msg['from'], ptype='subscribed')  
-        print(f"Suscripción aprobada para {msg['from']}")
-
-    async def mostrar_mensajes_recibidos(self):
-        while self.conectado:
-            message = await self.message_queue.get()
-            print(message)
-
     async def change_message(self, msg):
         estado  = ''
         self.send_presence(pshow=estado, pstatus=msg) 
@@ -219,41 +201,6 @@ class MyCliente(slixmpp.ClientXMPP):
         except Exception as e:
             print(f"Error sending file: {e}")
 
-    async def send_file(self, to_jid, file_path):
-        try:
-            # Verificar si el archivo existe
-            if not os.path.isfile(file_path):
-                print(f"El archivo '{file_path}' no existe.")
-                return
-
-            # Obtener el nombre del archivo
-            file_name = os.path.basename(file_path)
-
-            # Crear un JID para el destinatario
-            dest_jid = JID.fromstr(to_jid)
-
-            # Preparar el mensaje con el archivo adjunto
-            message = self.make_message(
-                mto=dest_jid,
-                mtype="chat",
-                msubject=f"Archivo: {file_name}",
-                mbody=f"Te estoy enviando el archivo '{file_name}'",
-            )
-
-            # Crear un elemento OOB y agregar el atributo 'url' utilizando append()
-            oob = xep_0066.OOB()
-            oob["url"] = f"file://{file_path}"
-            oob["desc"] = f"Archivo: {file_name}"
-            oob["expires"] = "3600"
-            message.append(oob)
-
-            # Enviar el mensaje
-            message.send()
-
-            print(f"Archivo '{file_name}' enviado exitosamente a {to_jid}")
-        except Exception as e:
-            print(f"Error al enviar el archivo: {str(e)}")
-
     async def crear_grupo(self, nombre_grupo):
         invitar = True
         try:
@@ -283,7 +230,7 @@ class MyCliente(slixmpp.ClientXMPP):
                 usuario_invitado = await ainput("Ingresa el JID del usuario que deseas invitar al grupo: ")
                 usuario_invitado = f"{usuario_invitado}@alumchat.xyz"
 
-                await self.plugin['xep_0045'].invite(
+                self.plugin['xep_0045'].invite(
                     room=nombre_grupo,
                     jid=usuario_invitado,
                     reason="¡Únete a nuestro grupo de chat!"
