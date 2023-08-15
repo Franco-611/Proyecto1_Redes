@@ -532,3 +532,5 @@ class MyCliente(slixmpp.ClientXMPP):
             except Exception as e:
                 print(f"Error: {e}")
 
+
+## Algunas de las funciones fueron creadas por IA y modificadas por mi para adaptarlas a los requerimientos del proyecto. Ademas de ello se puede tener como referencia el siguiente enlace: https://slixmpp.readthedocs.io/
