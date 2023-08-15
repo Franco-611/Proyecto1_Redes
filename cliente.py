@@ -386,12 +386,13 @@ class MyCliente(slixmpp.ClientXMPP):
             if conta == self.cont:
                 pass
             else:
-                # Se muestra la solicitud de suscripcion nueva y se agrega a la lista de contactos ya existentes
-                print("Solicitud de suscripción recibida del usuario: ")
                 for i in conta:
                     if i not in self.cont:
-                        print(i)
-                        self.cont.append(i)
+                        if i:
+                            # Se muestra la solicitud de suscripcion nueva y se agrega a la lista de contactos ya existentes
+                            print("Solicitud de suscripción recibida del usuario: ")
+                            print(i)
+                            self.cont.append(i)
             time.sleep(1)
 
     # Se define la funcion para identificar los cambios de estado de los contactos
@@ -516,7 +517,6 @@ class MyCliente(slixmpp.ClientXMPP):
                     # Se desconecta el cliente haciendo uso de la funcion disconnect
                     self.conectado = False
                     await self.disconnect()
-                    exit()
                 elif opcion == '9':
 
                     # Se elimina la cuenta haciendo uso de la funcion delete_count luego de una confirmacion
